@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>School Toilet Controller - Version 1.2</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #18212b;
+      --muted: #667085;
+      --border: #d9dee7;
+      --good: #157347;
+      --warn: #9a6700;
+      --danger: #b42318;
+      --primary: #175cd3;
+      --soft: #eef4ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    header .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(16, 24, 40, .04);
+    }
+
+    h2, h3 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    select, input, button {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 16px;
+      padding: 10px 12px;
+    }
+
+    input, select {
+      background: white;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+      background: white;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    button.good {
+      background: var(--good);
+      color: white;
+      border-color: var(--good);
+    }
+
+    button.danger {
+      background: white;
+      color: var(--danger);
+      border-color: #f5b7b1;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .row > * { flex: 1; }
+
+    .venue-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .venue-btn.active {
+      background: var(--soft);
+      color: var(--primary);
+      border-color: #84adff;
+    }
+
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #eef1f5;
+    }
+
+    .status-line:last-child {
+      border-bottom: 0;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .available { background: #ecfdf3; color: var(--good); }
+    .reserved { background: #fff7e0; color: var(--warn); }
+    .occupied { background: #fff0ee; color: var(--danger); }
+    .waiting { background: #f2f4f7; color: #344054; }
+
+    .student {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+
+    .student-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .student-name {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    .student-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .notice {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .hidden { display: none !important; }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+    }
+
+
+    .top-tabs {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .top-tab {
+      width: auto;
+      min-width: 120px;
+      padding: 9px 14px;
+      min-height: 38px;
+      font-size: 14px;
+    }
+
+    .top-tab.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .tab-panel {
+      display: block;
+    }
+
+    @media (max-width: 700px) {
+      .two { grid-template-columns: 1fr; }
+      .venue-buttons { grid-template-columns: repeat(2, 1fr); }
+      .row { flex-direction: column; align-items: stretch; }
+      .student-actions { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>School Toilet Controller</h1>
+  <div class="sub">Version 1.2 · Shared venue-based toilet allocation</div>
+  <div class="top-tabs">
+    <button id="teacherTabBtn" class="top-tab active">Teacher</button>
+    <button id="adminTabBtn" class="top-tab">Admin</button>
+  </div>
+</header>
+
+<main>
+  <div id="teacherPanel" class="grid tab-panel">
+
+  <section class="card">
+    <h2>1. Select Venue</h2>
+    <div class="row">
+      <div>
+        <label for="blockSelect">Block</label>
+        <select id="blockSelect"></select>
+      </div>
+      <div>
+        <label for="levelSelect">Level</label>
+        <select id="levelSelect"></select>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label>Venue</label>
+      <div id="venueButtons" class="venue-buttons"></div>
+    </div>
+
+    <div id="selectedVenueLabel" class="notice" style="margin-top:12px;">
+      Select a venue.
+    </div>
+  </section>
+
+  <section id="requestCard" class="card hidden">
+    <h2>2. Request Toilet</h2>
+
+    <div class="row">
+      <div>
+        <label for="studentName">Student name</label>
+        <input id="studentName" placeholder="e.g. John Tan" autocomplete="off" />
+      </div>
+      <div>
+        <label for="genderSelect">Gender</label>
+        <select id="genderSelect">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="requestBtn" class="primary" style="margin-top:12px;">REQUEST TOILET</button>
+    <div id="requestMessage" class="notice hidden" style="margin-top:10px;"></div>
+  </section>
+
+  <section id="classStatusCard" class="card hidden">
+    <div class="section-title">
+      <h2 id="classStatusTitle" style="margin:0;">Venue Status</h2>
+      <span id="classCount" class="pill waiting">0 active</span>
+    </div>
+    <div id="classStudents"></div>
+  </section>
+
+  <section class="grid two">
+    <div class="card">
+      <h2>Block Toilet Status</h2>
+      <div id="toiletStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>Waiting Queues</h2>
+      <div id="queueStatus"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Version 1.2 Notes</h2>
+    <div class="notice">
+      This file currently runs as a working standalone prototype using browser storage.
+      Teacher screens update automatically after each action; no refresh button is required.
+      For shared live use across multiple teachers' phones, the storage layer can later be replaced with Supabase.
+    </div>
+  </section>
+  </div>
+
+  <div id="adminPanel" class="grid tab-panel hidden">
+    <section class="card">
+      <h2>Admin Controls</h2>
+      <div class="notice" style="margin-bottom:12px;">
+        Reset Session clears all active requests, queues and toilet assignments on this device,
+        then returns every toilet to AVAILABLE.
+      </div>
+      <button id="adminResetBtn" class="danger">RESET SESSION</button>
+    </section>
+  </div>
+</main>
+
+<script>
+/*
+  SCHOOL TOILET CONTROLLER - VERSION 1.2
+
+  Current mode:
+  - Standalone prototype
+  - Uses localStorage
+  - No login
+  - No WhatsApp
+  - Venue-based handover
+  - Admin Reset Session
+
+  To make this shared across devices:
+  - connect Firebase Firestore
+  - replace loadState()/saveState() with Firestore reads/writes/listeners
+*/
+
+// ---------- CONFIGURATION ----------
+
+const venueMap = {
+  F: {
+    1: ["F1-01", "F1-02", "F1-03"],
+    2: ["F2-01", "F2-02", "F2-03"],
+    3: ["F3-01", "F3-02", "F3-03"],
+    4: ["F4-01", "F4-02", "F4-03"]
+  },
+  G: {
+    1: ["G1-01", "G1-02", "G1-03"],
+    2: ["G2-01", "G2-02", "G2-03"],
+    3: ["G3-01", "G3-02", "G3-03"],
+    4: ["G4-01", "G4-02", "G4-03"]
+  },
+  H: {
+    1: ["H1-01", "H1-02", "H1-03"],
+    2: ["H2-01", "H2-02", "H2-03"],
+    3: ["H3-01", "H3-02", "H3-03"],
+    4: ["H4-01", "H4-02", "H4-03"]
+  },
+  E: {
+    1: ["E1-01"],
+    4: ["E4-01", "E4-02", "E4-03", "E4-04"]
+  }
+};
+
+/*
+  IMPORTANT:
+  For Blocks F/G/H, this Version 1 assumes toilets are on Levels 1 and 3,
+  with separate Male/Female toilets on each of those levels.
+
+  Block E Level 4:
+  - one shared toilet for both genders
+
+  Block E Level 1:
+  - uses Block C toilets
+  - Block C is set here as alternate-level gender toilets.
+  - Adjust the gender mapping below if the actual C layout differs.
+*/
+const toilets = [
+  { id: "F-L1-M", block: "F", level: 1, gender: "male", label: "Blk F Level 1 Male Toilet" },
+  { id: "F-L1-F", block: "F", level: 1, gender: "female", label: "Blk F Level 1 Female Toilet" },
+  { id: "F-L3-M", block: "F", level: 3, gender: "male", label: "Blk F Level 3 Male Toilet" },
+  { id: "F-L3-F", block: "F", level: 3, gender: "female", label: "Blk F Level 3 Female Toilet" },
+
+  { id: "G-L1-M", block: "G", level: 1, gender: "male", label: "Blk G Level 1 Male Toilet" },
+  { id: "G-L1-F", block: "G", level: 1, gender: "female", label: "Blk G Level 1 Female Toilet" },
+  { id: "G-L3-M", block: "G", level: 3, gender: "male", label: "Blk G Level 3 Male Toilet" },
+  { id: "G-L3-F", block: "G", level: 3, gender: "female", label: "Blk G Level 3 Female Toilet" },
+
+  { id: "H-L1-M", block: "H", level: 1, gender: "male", label: "Blk H Level 1 Male Toilet" },
+  { id: "H-L1-F", block: "H", level: 1, gender: "female", label: "Blk H Level 1 Female Toilet" },
+  { id: "H-L3-M", block: "H", level: 3, gender: "male", label: "Blk H Level 3 Male Toilet" },
+  { id: "H-L3-F", block: "H", level: 3, gender: "female", label: "Blk H Level 3 Female Toilet" },
+
+  // Blk E Level 4 shared toilet
+  { id: "E-L4-S", block: "E", level: 4, gender: "shared", label: "Blk E Level 4 Toilet" },
+
+  // Blk C alternate-level toilets for E1-01.
+  // EDIT THESE FOUR LINES if the actual male/female levels differ.
+  { id: "C-L1-M", block: "C", level: 1, gender: "male", label: "Blk C Level 1 Male Toilet" },
+  { id: "C-L2-F", block: "C", level: 2, gender: "female", label: "Blk C Level 2 Female Toilet" },
+  { id: "C-L3-M", block: "C", level: 3, gender: "male", label: "Blk C Level 3 Male Toilet" },
+  { id: "C-L4-F", block: "C", level: 4, gender: "female", label: "Blk C Level 4 Female Toilet" }
+];
+
+const STORAGE_KEY = "school_toilet_controller_v1";
+
+let state = loadState();
+let selectedVenue = null;
+
+// ---------- STATE ----------
+
+function defaultState() {
+  const toiletStates = {};
+  toilets.forEach(t => {
+    toiletStates[t.id] = {
+      status: "available",   // available | reserved | occupied
+      studentId: null
+    };
+  });
+
+  return {
+    requests: [],
+    toiletStates
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+
+    // Add any newly configured toilets safely.
+    toilets.forEach(t => {
+      if (!parsed.toiletStates[t.id]) {
+        parsed.toiletStates[t.id] = { status: "available", studentId: null };
+      }
+    });
+
+    return parsed;
+  } catch {
+    return defaultState();
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function nowText() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// ---------- VENUE / ROUTING ----------
+
+function parseVenue(venue) {
+  const m = /^([A-Z])(\d)-(\d{2})$/.exec(venue);
+  if (!m) return null;
+  return { block: m[1], level: Number(m[2]), room: m[3] };
+}
+
+function candidateToilets(venue, gender) {
+  const v = parseVenue(venue);
+  if (!v) return [];
+
+  // Special rule: E4 venues use one shared Blk E Level 4 toilet.
+  if (v.block === "E" && v.level === 4) {
+    return toilets.filter(t => t.id === "E-L4-S");
+  }
+
+  // Special rule: E1-01 uses Blk C toilets, based on gender.
+  if (v.block === "E" && v.level === 1) {
+    return toilets
+      .filter(t => t.block === "C" && t.gender === gender)
+      .sort((a, b) => Math.abs(a.level - 1) - Math.abs(b.level - 1));
+  }
+
+  // Standard rule for F/G/H: same block, matching gender, nearest level first.
+  return toilets
+    .filter(t => t.block === v.block && t.gender === gender)
+    .sort((a, b) => {
+      const da = Math.abs(a.level - v.level);
+      const db = Math.abs(b.level - v.level);
+      if (da !== db) return da - db;
+      return a.level - b.level;
+    });
+}
+
+function getToilet(id) {
+  return toilets.find(t => t.id === id);
+}
+
+function allocateToilet(request) {
+  const candidates = candidateToilets(request.venue, request.gender);
+  const free = candidates.find(t => state.toiletStates[t.id]?.status === "available");
+
+  if (!free) {
+    request.status = "waiting";
+    request.toiletId = null;
+    return false;
+  }
+
+  request.status = "allocated";
+  request.toiletId = free.id;
+  request.allocatedAt = nowText();
+  state.toiletStates[free.id] = {
+    status: "reserved",
+    studentId: request.id
+  };
+  return true;
+}
+
+function tryAllocateWaiting() {
+  // Preserve request order.
+  const waiting = state.requests
+    .filter(r => r.status === "waiting")
+    .sort((a, b) => a.createdTs - b.createdTs);
+
+  for (const req of waiting) {
+    allocateToilet(req);
+  }
+}
+
+// ---------- ACTIONS ----------
+
+function createRequest() {
+  if (!selectedVenue) return;
+
+  const nameInput = document.getElementById("studentName");
+  const genderSelect = document.getElementById("genderSelect");
+  const message = document.getElementById("requestMessage");
+
+  const name = nameInput.value.trim();
+  const gender = genderSelect.value;
+
+  if (!name) {
+    showMessage("Enter the student's name.", true);
+    return;
+  }
+
+  // Prevent duplicate active request for same student in same venue.
+  const duplicate = state.requests.find(r =>
+    r.venue === selectedVenue &&
+    r.name.toLowerCase() === name.toLowerCase() &&
+    !["completed", "cancelled"].includes(r.status)
+  );
+
+  if (duplicate) {
+    showMessage(`${name} already has an active toilet request in ${selectedVenue}.`, true);
+    return;
+  }
+
+  const req = {
+    id: uid(),
+    venue: selectedVenue,
+    name,
+    gender,
+    status: "waiting",
+    toiletId: null,
+    requestedAt: nowText(),
+    createdTs: Date.now()
+  };
+
+  allocateToilet(req);
+  state.requests.push(req);
+  saveState();
+
+  nameInput.value = "";
+
+  if (req.status === "allocated") {
+    const t = getToilet(req.toiletId);
+    showMessage(`${name} has been allocated ${t.label}. Press STUDENT SENT when the student leaves class.`);
+  } else {
+    showMessage(`${name} is waiting. No suitable toilet is currently available.`);
+  }
+
+  renderAll();
+}
+
+function markSent(id) {
+  const req = state.requests.find(r => r.id === id);
+  if (!req || req.status !== "allocated") return;
+
+  req.status = "out";
+  req.sentAt = nowText();
+
+  if (req.toiletId) {
+    state.toiletStates[req.toiletId] = {
+      status: "occupied",
+      studentId: req.id
+    };
+  }
+
+  saveState();
+  renderAll();
+}
+
+function markBack(id) {
+  const req = state.requests.find(r => r.id === id);
+  if (!req || req.status !== "out") return;
+
+  req.status = "completed";
+  req.returnedAt = nowText();
+
+  if (req.toiletId) {
+    state.toiletStates[req.toiletId] = {
+      status: "available",
+      studentId: null
+    };
+  }
+
+  req.toiletId = req.toiletId; // retain history
+  tryAllocateWaiting();
+  saveState();
+  renderAll();
+}
+
+function cancelRequest(id) {
+  const req = state.requests.find(r => r.id === id);
+  if (!req) return;
+
+  if (req.status === "out") {
+    alert("A student currently marked as out cannot be cancelled. Use STUDENT BACK when they return.");
+    return;
+  }
+
+  if (req.toiletId && state.toiletStates[req.toiletId]?.studentId === req.id) {
+    state.toiletStates[req.toiletId] = {
+      status: "available",
+      studentId: null
+    };
+  }
+
+  req.status = "cancelled";
+  req.cancelledAt = nowText();
+
+  tryAllocateWaiting();
+  saveState();
+  renderAll();
+}
+
+function showMessage(text, isError = false) {
+  const el = document.getElementById("requestMessage");
+  el.textContent = text;
+  el.classList.remove("hidden");
+  el.style.borderColor = isError ? "#f5b7b1" : "";
+  el.style.color = isError ? "#b42318" : "";
+}
+
+
+function resetSession() {
+  const confirmed = confirm(
+    "Reset the entire session?\n\n" +
+    "This will:\n" +
+    "• remove all waiting students\n" +
+    "• remove all students currently out\n" +
+    "• clear all toilet assignments\n" +
+    "• set every toilet to AVAILABLE\n\n" +
+    "This cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  state = defaultState();
+  saveState();
+
+  selectedVenue = null;
+  document.getElementById("studentName").value = "";
+  document.getElementById("requestMessage").classList.add("hidden");
+  document.getElementById("selectedVenueLabel").textContent = "Select a venue.";
+  document.getElementById("requestCard").classList.add("hidden");
+  document.getElementById("classStatusCard").classList.add("hidden");
+
+  renderVenues();
+  renderAll();
+
+  alert("Session reset complete. All toilets are now AVAILABLE.");
+}
+
+// ---------- RENDER ----------
+
+function initSelectors() {
+  const blockSelect = document.getElementById("blockSelect");
+  blockSelect.innerHTML = "";
+
+  Object.keys(venueMap).forEach(block => {
+    const opt = document.createElement("option");
+    opt.value = block;
+    opt.textContent = `Block ${block}`;
+    blockSelect.appendChild(opt);
+  });
+
+  blockSelect.value = "F";
+  renderLevels();
+}
+
+function renderLevels() {
+  const block = document.getElementById("blockSelect").value;
+  const levelSelect = document.getElementById("levelSelect");
+  levelSelect.innerHTML = "";
+
+  Object.keys(venueMap[block]).forEach(level => {
+    const opt = document.createElement("option");
+    opt.value = level;
+    opt.textContent = `Level ${level}`;
+    levelSelect.appendChild(opt);
+  });
+
+  renderVenues();
+}
+
+function renderVenues() {
+  const block = document.getElementById("blockSelect").value;
+  const level = document.getElementById("levelSelect").value;
+  const wrap = document.getElementById("venueButtons");
+  wrap.innerHTML = "";
+
+  const venues = venueMap[block][level] || [];
+
+  venues.forEach(v => {
+    const btn = document.createElement("button");
+    btn.className = "venue-btn" + (selectedVenue === v ? " active" : "");
+    btn.textContent = v;
+    btn.onclick = () => {
+      selectedVenue = v;
+      document.getElementById("selectedVenueLabel").textContent = `Selected venue: ${v}`;
+      document.getElementById("requestCard").classList.remove("hidden");
+      document.getElementById("classStatusCard").classList.remove("hidden");
+      renderVenues();
+      renderClassStatus();
+      renderToilets();
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+function statusLabel(req) {
+  switch (req.status) {
+    case "waiting": return "WAITING FOR TOILET";
+    case "allocated": return "TOILET ALLOCATED";
+    case "out": return "CURRENTLY AT TOILET";
+    case "completed": return "RETURNED";
+    case "cancelled": return "CANCELLED";
+    default: return req.status.toUpperCase();
+  }
+}
+
+function statusPillClass(req) {
+  if (req.status === "allocated") return "reserved";
+  if (req.status === "out") return "occupied";
+  return "waiting";
+}
+
+function renderClassStatus() {
+  const card = document.getElementById("classStatusCard");
+  if (!selectedVenue) {
+    card.classList.add("hidden");
+    return;
+  }
+
+  document.getElementById("classStatusTitle").textContent = `${selectedVenue} — Toilet Status`;
+
+  const active = state.requests
+    .filter(r => r.venue === selectedVenue && !["completed", "cancelled"].includes(r.status))
+    .sort((a, b) => a.createdTs - b.createdTs);
+
+  document.getElementById("classCount").textContent = `${active.length} active`;
+
+  const wrap = document.getElementById("classStudents");
+  wrap.innerHTML = "";
+
+  if (!active.length) {
+    wrap.innerHTML = `<div class="notice">No students waiting or currently out from ${selectedVenue}.</div>`;
+    return;
+  }
+
+  active.forEach(req => {
+    const toilet = req.toiletId ? getToilet(req.toiletId) : null;
+
+    const el = document.createElement("div");
+    el.className = "student";
+
+    let detail = `
+      <div class="student-head">
+        <div>
+          <div class="student-name">${escapeHtml(req.name)}</div>
+          <div class="meta">${capitalize(req.gender)} · Requested ${req.requestedAt}</div>
+        </div>
+        <span class="pill ${statusPillClass(req)}">${statusLabel(req)}</span>
+      </div>
+    `;
+
+    if (req.status === "waiting") {
+      const pos = queuePosition(req);
+      detail += `<div class="meta">Queue position: ${pos}</div>`;
+    }
+
+    if (toilet) {
+      detail += `<div class="meta">Assigned: <strong>${escapeHtml(toilet.label)}</strong></div>`;
+    }
+
+    if (req.status === "out") {
+      detail += `<div class="meta">Left class: ${req.sentAt || "-"}</div>`;
+    }
+
+    detail += `<div class="student-actions">`;
+
+    if (req.status === "allocated") {
+      detail += `<button class="good" onclick="markSent('${req.id}')">STUDENT SENT</button>`;
+      detail += `<button class="danger" onclick="cancelRequest('${req.id}')">CANCEL</button>`;
+    } else if (req.status === "out") {
+      detail += `<button class="primary" onclick="markBack('${req.id}')">STUDENT BACK</button>`;
+    } else if (req.status === "waiting") {
+      detail += `<button class="danger" onclick="cancelRequest('${req.id}')">CANCEL REQUEST</button>`;
+    }
+
+    detail += `</div>`;
+    el.innerHTML = detail;
+    wrap.appendChild(el);
+  });
+}
+
+function queuePosition(req) {
+  const queue = state.requests
+    .filter(r => r.status === "waiting" && sameToiletPool(r, req))
+    .sort((a, b) => a.createdTs - b.createdTs);
+
+  return queue.findIndex(r => r.id === req.id) + 1;
+}
+
+function sameToiletPool(a, b) {
+  const ca = candidateToilets(a.venue, a.gender).map(x => x.id).sort().join("|");
+  const cb = candidateToilets(b.venue, b.gender).map(x => x.id).sort().join("|");
+  return ca === cb;
+}
+
+function renderToilets() {
+  const wrap = document.getElementById("toiletStatus");
+  wrap.innerHTML = "";
+
+  // If a venue is selected, show relevant block plus C for E1.
+  let visible = toilets;
+  if (selectedVenue) {
+    const v = parseVenue(selectedVenue);
+    if (v.block === "E" && v.level === 1) {
+      visible = toilets.filter(t => t.block === "C");
+    } else if (v.block === "E" && v.level === 4) {
+      visible = toilets.filter(t => t.block === "E");
+    } else {
+      visible = toilets.filter(t => t.block === v.block);
+    }
+  }
+
+  visible.forEach(t => {
+    const s = state.toiletStates[t.id] || { status: "available", studentId: null };
+    const student = s.studentId ? state.requests.find(r => r.id === s.studentId) : null;
+
+    const row = document.createElement("div");
+    row.className = "status-line";
+
+    const statusText = s.status.toUpperCase();
+    const studentText = student ? ` · ${student.name} (${student.venue})` : "";
+
+    row.innerHTML = `
+      <div>
+        <strong>${escapeHtml(t.label)}</strong>
+        <div class="small">${studentText ? escapeHtml(studentText.slice(3)) : ""}</div>
+      </div>
+      <span class="pill ${s.status}">${statusText}</span>
+    `;
+    wrap.appendChild(row);
+  });
+
+  if (!visible.length) {
+    wrap.innerHTML = `<div class="notice">No toilet configuration found.</div>`;
+  }
+}
+
+function renderQueues() {
+  const wrap = document.getElementById("queueStatus");
+  const waiting = state.requests
+    .filter(r => r.status === "waiting")
+    .sort((a, b) => a.createdTs - b.createdTs);
+
+  if (!waiting.length) {
+    wrap.innerHTML = `<div class="notice">No students currently waiting.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = "";
+  waiting.forEach((r, i) => {
+    const row = document.createElement("div");
+    row.className = "status-line";
+    row.innerHTML = `
+      <div>
+        <strong>${i + 1}. ${escapeHtml(r.name)}</strong>
+        <div class="small">${escapeHtml(r.venue)} · ${capitalize(r.gender)} · requested ${r.requestedAt}</div>
+      </div>
+      <span class="pill waiting">WAITING</span>
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+function renderAll() {
+  renderClassStatus();
+  renderToilets();
+  renderQueues();
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  }[c]));
+}
+
+
+function showTeacherTab() {
+  document.getElementById("teacherPanel").classList.remove("hidden");
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("teacherTabBtn").classList.add("active");
+  document.getElementById("adminTabBtn").classList.remove("active");
+}
+
+function showAdminTab() {
+  document.getElementById("teacherPanel").classList.add("hidden");
+  document.getElementById("adminPanel").classList.remove("hidden");
+  document.getElementById("teacherTabBtn").classList.remove("active");
+  document.getElementById("adminTabBtn").classList.add("active");
+}
+
+// ---------- EVENTS ----------
+
+document.getElementById("blockSelect").addEventListener("change", () => {
+  selectedVenue = null;
+  document.getElementById("selectedVenueLabel").textContent = "Select a venue.";
+  document.getElementById("requestCard").classList.add("hidden");
+  document.getElementById("classStatusCard").classList.add("hidden");
+  renderLevels();
+  renderToilets();
+});
+
+document.getElementById("levelSelect").addEventListener("change", () => {
+  selectedVenue = null;
+  document.getElementById("selectedVenueLabel").textContent = "Select a venue.";
+  document.getElementById("requestCard").classList.add("hidden");
+  document.getElementById("classStatusCard").classList.add("hidden");
+  renderVenues();
+  renderToilets();
+});
+
+document.getElementById("teacherTabBtn").addEventListener("click", showTeacherTab);
+document.getElementById("adminTabBtn").addEventListener("click", showAdminTab);
+
+document.getElementById("requestBtn").addEventListener("click", createRequest);
+
+document.getElementById("adminResetBtn").addEventListener("click", resetSession);
+
+document.getElementById("studentName").addEventListener("keydown", e => {
+  if (e.key === "Enter") createRequest();
+});
+
+// ---------- START ----------
+
+initSelectors();
+renderAll();
+</script>
+</body>
+</html>
