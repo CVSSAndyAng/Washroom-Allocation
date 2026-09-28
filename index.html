@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ffffff" />
-  <title>School Toilet Controller - Supabase Version 2.0</title>
+  <title>School Toilet Controller - Supabase Version 2.3</title>
 
   <!-- Official Supabase JS v2 CDN pattern -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,7 +78,7 @@
   <div class="header-row">
     <div class="header-title">
       <h1>School Toilet Controller</h1>
-      <div class="sub">Version 2.0 · Supabase shared live version</div>
+      <div class="sub">Version 2.3 · Supabase shared live version</div>
     </div>
     <span id="connectionPill" class="pill disconnected connection">NOT CONNECTED</span>
   </div>
@@ -161,6 +161,45 @@
 
   <div id="adminPanel" class="grid hidden">
     <section class="card">
+      <h2>Add Venue / Toilet</h2>
+      <div class="notice" style="margin-bottom:12px;">
+        Add a new class venue or toilet location. New class venues appear automatically in the Teacher tab.
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="adminBlock">Block</label>
+          <input id="adminBlock" maxlength="1" placeholder="e.g. F" />
+        </div>
+        <div>
+          <label for="adminLevel">Level</label>
+          <input id="adminLevel" type="number" min="1" max="20" placeholder="e.g. 3" />
+        </div>
+        <div>
+          <label for="adminRoom">Room / Location No.</label>
+          <input id="adminRoom" maxlength="2" placeholder="e.g. 01" />
+        </div>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-weight:700;">
+        <input id="adminIsToilet" type="checkbox" style="width:auto;min-height:auto;" />
+        This venue is a toilet
+      </label>
+
+      <div id="toiletOptions" class="hidden" style="margin-top:12px;">
+        <label for="adminToiletGender">Toilet type</label>
+        <select id="adminToiletGender">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="shared">Shared / Both genders</option>
+        </select>
+      </div>
+
+      <button id="adminAddVenueBtn" class="primary" style="margin-top:14px;">ADD VENUE</button>
+      <div id="adminAddMessage" class="notice hidden" style="margin-top:10px;"></div>
+    </section>
+
+    <section class="card">
       <h2>Admin Controls</h2>
       <div class="notice" style="margin-bottom:12px;">
         Reset Session clears the shared Supabase session for <strong>all teachers</strong>:
@@ -188,17 +227,15 @@ const SUPABASE_URL = "https://osrpuzoytycjdtxygnab.supabase.co";
 const SUPABASE_KEY = "sb_publishable_j4SkW6c5nQuSf_2diYUCVg_syrutS1P";
 
 // ---------- VENUE CONFIGURATION ----------
+// Venues are now loaded from Supabase so Admin additions appear automatically.
 
-const venueMap = {
-  F:{1:["F1-01","F1-02","F1-03"],2:["F2-01","F2-02","F2-03"],3:["F3-01","F3-02","F3-03"],4:["F4-01","F4-02","F4-03"]},
-  G:{1:["G1-01","G1-02","G1-03"],2:["G2-01","G2-02","G2-03"],3:["G3-01","G3-02","G3-03"],4:["G4-01","G4-02","G4-03"]},
-  H:{1:["H1-01","H1-02","H1-03"],2:["H2-01","H2-02","H2-03"],3:["H3-01","H3-02","H3-03"],4:["H4-01","H4-02","H4-03"]},
-  E:{1:["E1-01"],4:["E4-01","E4-02","E4-03","E4-04"]}
-};
+let venueMap = {};
+let allVenues = [];
 
 let db = null;
 let requests = [];
 let toilets = [];
+let venues = [];
 let selectedVenue = null;
 let reloadTimer = null;
 
@@ -224,6 +261,7 @@ async function initialiseSupabase() {
   db.channel("toilet-live")
     .on("postgres_changes", {event:"*", schema:"public", table:"toilet_requests"}, scheduleReload)
     .on("postgres_changes", {event:"*", schema:"public", table:"toilets"}, scheduleReload)
+    .on("postgres_changes", {event:"*", schema:"public", table:"venues"}, scheduleReload)
     .subscribe(status => {
       const ok = status === "SUBSCRIBED";
       if (ok) setConnection(true, "LIVE");
@@ -241,21 +279,25 @@ function scheduleReload() {
 async function loadData() {
   if (!db) return;
 
-  const [reqResult, toiletResult] = await Promise.all([
+  const [reqResult, toiletResult, venueResult] = await Promise.all([
     db.from("toilet_requests").select("*").order("requested_at", {ascending:true}),
-    db.from("toilets").select("*").order("block").order("level").order("gender")
+    db.from("toilets").select("*").order("block").order("level").order("gender"),
+    db.from("venues").select("*").order("block").order("level").order("room")
   ]);
 
-  if (reqResult.error || toiletResult.error) {
+  if (reqResult.error || toiletResult.error || venueResult.error) {
     setConnection(false, "ERROR");
-    const msg = reqResult.error?.message || toiletResult.error?.message || "Unable to load Supabase data";
+    const msg = reqResult.error?.message || toiletResult.error?.message || venueResult.error?.message || "Unable to load Supabase data";
     document.getElementById("adminConnectionText").textContent = msg;
     return;
   }
 
   requests = reqResult.data || [];
   toilets = toiletResult.data || [];
+  venues = venueResult.data || [];
+  rebuildVenueMap();
   setConnection(true, "LIVE");
+  initSelectors(true);
   renderAll();
 }
 
@@ -266,6 +308,24 @@ function setConnection(ok, text) {
   document.getElementById("adminConnectionText").textContent =
     ok ? "Connected to Supabase. Changes from other teachers update automatically." :
          "Supabase is not currently connected.";
+}
+
+
+function rebuildVenueMap() {
+  venueMap = {};
+  allVenues = venues.filter(v => !v.is_toilet);
+
+  for (const v of allVenues) {
+    if (!venueMap[v.block]) venueMap[v.block] = {};
+    if (!venueMap[v.block][v.level]) venueMap[v.block][v.level] = [];
+    venueMap[v.block][v.level].push(v.code);
+  }
+
+  for (const block of Object.keys(venueMap)) {
+    for (const level of Object.keys(venueMap[block])) {
+      venueMap[block][level].sort();
+    }
+  }
 }
 
 // ---------- ACTIONS ----------
@@ -372,29 +432,46 @@ function setBusy(on) {
 
 // ---------- RENDER ----------
 
-function initSelectors() {
+function initSelectors(preserve = false) {
   const blockSelect = document.getElementById("blockSelect");
+  const previousBlock = preserve ? blockSelect.value : "";
+  const previousLevel = preserve ? document.getElementById("levelSelect").value : "";
+
   blockSelect.innerHTML = "";
-  Object.keys(venueMap).forEach(block => {
+  const blocks = Object.keys(venueMap).sort();
+
+  blocks.forEach(block => {
     const o = document.createElement("option");
     o.value = block;
     o.textContent = `Block ${block}`;
     blockSelect.appendChild(o);
   });
-  blockSelect.value = "F";
-  renderLevels();
+
+  if (!blocks.length) {
+    document.getElementById("levelSelect").innerHTML = "";
+    document.getElementById("venueButtons").innerHTML =
+      `<div class="notice">No class venues configured yet.</div>`;
+    return;
+  }
+
+  blockSelect.value = blocks.includes(previousBlock) ? previousBlock : blocks[0];
+  renderLevels(previousLevel);
 }
 
-function renderLevels() {
+function renderLevels(preferredLevel = "") {
   const block = document.getElementById("blockSelect").value;
   const levelSelect = document.getElementById("levelSelect");
   levelSelect.innerHTML = "";
-  Object.keys(venueMap[block]).forEach(level => {
+
+  const levels = Object.keys(venueMap[block] || {}).sort((a,b) => Number(a) - Number(b));
+  levels.forEach(level => {
     const o = document.createElement("option");
     o.value = level;
     o.textContent = `Level ${level}`;
     levelSelect.appendChild(o);
   });
+
+  if (levels.includes(String(preferredLevel))) levelSelect.value = String(preferredLevel);
   renderVenues();
 }
 
@@ -580,6 +657,77 @@ function showMessage(text, error=false) {
   el.style.color = error ? "#b42318" : "";
 }
 
+
+function toggleToiletOptions() {
+  const checked = document.getElementById("adminIsToilet").checked;
+  document.getElementById("toiletOptions").classList.toggle("hidden", !checked);
+  document.getElementById("adminAddVenueBtn").textContent = checked ? "ADD TOILET" : "ADD VENUE";
+}
+
+async function adminAddVenue() {
+  if (!db) {
+    alert("Supabase is not connected.");
+    return;
+  }
+
+  const block = document.getElementById("adminBlock").value.trim().toUpperCase();
+  const level = Number(document.getElementById("adminLevel").value);
+  let room = document.getElementById("adminRoom").value.trim();
+  const isToilet = document.getElementById("adminIsToilet").checked;
+  const toiletGender = isToilet ? document.getElementById("adminToiletGender").value : null;
+  const msg = document.getElementById("adminAddMessage");
+
+  if (!/^[A-Z]$/.test(block)) {
+    showAdminAddMessage("Enter a single block letter, for example F.", true);
+    return;
+  }
+  if (!Number.isInteger(level) || level < 1 || level > 20) {
+    showAdminAddMessage("Enter a valid level number.", true);
+    return;
+  }
+  if (!/^\d{1,2}$/.test(room)) {
+    showAdminAddMessage("Room / Location No. must be 1 or 2 digits.", true);
+    return;
+  }
+  room = room.padStart(2, "0");
+
+  const pin = prompt("Enter Admin PIN:");
+  if (pin === null) return;
+
+  setBusy(true);
+  const { error } = await db.rpc("admin_add_venue", {
+    p_pin: pin,
+    p_block: block,
+    p_level: level,
+    p_room: room,
+    p_is_toilet: isToilet,
+    p_toilet_gender: toiletGender
+  });
+  setBusy(false);
+
+  if (error) {
+    showAdminAddMessage(cleanError(error.message), true);
+    return;
+  }
+
+  document.getElementById("adminBlock").value = "";
+  document.getElementById("adminLevel").value = "";
+  document.getElementById("adminRoom").value = "";
+  document.getElementById("adminIsToilet").checked = false;
+  toggleToiletOptions();
+
+  showAdminAddMessage(isToilet ? "Toilet added successfully." : "Venue added successfully.");
+  await loadData();
+}
+
+function showAdminAddMessage(text, error=false) {
+  const el = document.getElementById("adminAddMessage");
+  el.textContent = text;
+  el.classList.remove("hidden");
+  el.style.borderColor = error ? "#f5b7b1" : "";
+  el.style.color = error ? "#b42318" : "";
+}
+
 // ---------- TABS ----------
 
 function showTeacherTab() {
@@ -620,14 +768,16 @@ document.getElementById("teacherTabBtn").addEventListener("click", showTeacherTa
 document.getElementById("adminTabBtn").addEventListener("click", showAdminTab);
 document.getElementById("requestBtn").addEventListener("click", createRequest);
 document.getElementById("adminResetBtn").addEventListener("click", resetSession);
+document.getElementById("adminAddVenueBtn").addEventListener("click", adminAddVenue);
+document.getElementById("adminIsToilet").addEventListener("change", toggleToiletOptions);
 document.getElementById("studentName").addEventListener("keydown", e => {
   if (e.key === "Enter") createRequest();
 });
 
 // ---------- START ----------
 
-initSelectors();
 renderAll();
+toggleToiletOptions();
 initialiseSupabase();
 </script>
 </body>
