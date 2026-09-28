@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ffffff" />
-  <title>School Toilet Controller - Supabase Version 2.3</title>
+  <title>School Toilet Controller - Supabase Version 2.4</title>
 
   <!-- Official Supabase JS v2 CDN pattern -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,7 +78,7 @@
   <div class="header-row">
     <div class="header-title">
       <h1>School Toilet Controller</h1>
-      <div class="sub">Version 2.3 · Supabase shared live version</div>
+      <div class="sub">Version 2.4 · Supabase shared live version</div>
     </div>
     <span id="connectionPill" class="pill disconnected connection">NOT CONNECTED</span>
   </div>
@@ -197,6 +197,33 @@
 
       <button id="adminAddVenueBtn" class="primary" style="margin-top:14px;">ADD VENUE</button>
       <div id="adminAddMessage" class="notice hidden" style="margin-top:10px;"></div>
+    </section>
+
+    <section class="card">
+      <h2>Manage Toilet Gender</h2>
+      <div class="notice" style="margin-bottom:12px;">
+        Select an existing toilet venue and assign it as Male, Female or Shared / both genders.
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="adminExistingToilet">Toilet venue</label>
+          <select id="adminExistingToilet"></select>
+        </div>
+        <div>
+          <label for="adminExistingToiletGender">Gender</label>
+          <select id="adminExistingToiletGender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="shared">Shared / Both genders</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="adminUpdateToiletGenderBtn" class="primary" style="margin-top:14px;">
+        UPDATE TOILET GENDER
+      </button>
+      <div id="adminUpdateToiletMessage" class="notice hidden" style="margin-top:10px;"></div>
     </section>
 
     <section class="card">
@@ -501,6 +528,7 @@ function renderAll() {
   renderClassStatus();
   renderToiletStatus();
   renderQueues();
+  renderAdminToiletOptions();
 }
 
 function renderClassStatus() {
@@ -728,6 +756,82 @@ function showAdminAddMessage(text, error=false) {
   el.style.color = error ? "#b42318" : "";
 }
 
+
+function renderAdminToiletOptions() {
+  const select = document.getElementById("adminExistingToilet");
+  if (!select) return;
+
+  const previous = select.value;
+  select.innerHTML = "";
+
+  const list = [...toilets].sort((a,b) =>
+    a.block.localeCompare(b.block) ||
+    Number(a.level) - Number(b.level) ||
+    a.label.localeCompare(b.label)
+  );
+
+  for (const t of list) {
+    const o = document.createElement("option");
+    o.value = t.id;
+    o.textContent = `${t.label} — ${capitalize(t.gender)}`;
+    select.appendChild(o);
+  }
+
+  if (list.some(t => t.id === previous)) {
+    select.value = previous;
+  }
+
+  syncAdminToiletGender();
+}
+
+function syncAdminToiletGender() {
+  const id = document.getElementById("adminExistingToilet")?.value;
+  const t = toilets.find(x => x.id === id);
+  if (t) document.getElementById("adminExistingToiletGender").value = t.gender;
+}
+
+async function adminUpdateToiletGender() {
+  if (!db) {
+    alert("Supabase is not connected.");
+    return;
+  }
+
+  const toiletId = document.getElementById("adminExistingToilet").value;
+  const gender = document.getElementById("adminExistingToiletGender").value;
+
+  if (!toiletId) {
+    showAdminUpdateToiletMessage("Select a toilet venue.", true);
+    return;
+  }
+
+  const pin = prompt("Enter Admin PIN:");
+  if (pin === null) return;
+
+  setBusy(true);
+  const { error } = await db.rpc("admin_set_toilet_gender", {
+    p_pin: pin,
+    p_toilet_id: toiletId,
+    p_gender: gender
+  });
+  setBusy(false);
+
+  if (error) {
+    showAdminUpdateToiletMessage(cleanError(error.message), true);
+    return;
+  }
+
+  showAdminUpdateToiletMessage("Toilet gender updated successfully.");
+  await loadData();
+}
+
+function showAdminUpdateToiletMessage(text, error=false) {
+  const el = document.getElementById("adminUpdateToiletMessage");
+  el.textContent = text;
+  el.classList.remove("hidden");
+  el.style.borderColor = error ? "#f5b7b1" : "";
+  el.style.color = error ? "#b42318" : "";
+}
+
 // ---------- TABS ----------
 
 function showTeacherTab() {
@@ -768,6 +872,8 @@ document.getElementById("teacherTabBtn").addEventListener("click", showTeacherTa
 document.getElementById("adminTabBtn").addEventListener("click", showAdminTab);
 document.getElementById("requestBtn").addEventListener("click", createRequest);
 document.getElementById("adminResetBtn").addEventListener("click", resetSession);
+document.getElementById("adminUpdateToiletGenderBtn").addEventListener("click", adminUpdateToiletGender);
+document.getElementById("adminExistingToilet").addEventListener("change", syncAdminToiletGender);
 document.getElementById("adminAddVenueBtn").addEventListener("click", adminAddVenue);
 document.getElementById("adminIsToilet").addEventListener("change", toggleToiletOptions);
 document.getElementById("studentName").addEventListener("keydown", e => {
